@@ -1,4 +1,14 @@
 #!/usr/bin/env ruby
+#
+# Maintain a database of Rust compiler versions and the git commit that they
+# were built from.
+#
+# (C) Copyright 2016 Jethro G. Beekman
+#
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 
 require 'json'
 require 'net/https'
