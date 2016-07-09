@@ -9,5 +9,5 @@ Usage:
 ```
 
 This is all scraped from [buildbot](https://buildbot.rust-lang.org/) with some
-missing information added in [fixups]. Note that nightly information is not
-available before March 2016. PRs accepted :-p.
+missing information added in [fixups](fixups). Note that nightly information is
+not available before March 2016. PRs accepted :-p.
