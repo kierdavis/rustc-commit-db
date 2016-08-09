@@ -101,6 +101,18 @@ class BuildCache
 			end
 		end
 	end
+
+	def check_missing(index)
+		if @channel=="stable" then
+			index_versions=index.lines.map{|l|l=~Regexp.new("^/dist/rustc-(\\d+\\.\\d+\\.\\d+)-src.tar.gz,")&&$~[1]}.compact
+			cache_versions=@builds.values.map{|v|build_props(v)['package_name']}.compact
+			(index_versions-cache_versions).sort_by{|v|v.split(/[^0-9]+/).map(&:to_i)}
+		else
+			index_dates=index.lines.map{|l|l=~Regexp.new("^/dist/(\\d{4}-\\d{2}-\\d{2})/channel-rust-#{@channel}-date.txt,")&&$~[1]}.compact
+			cache_dates=@builds.values.map{|v|build_props(v)['archive_date']}.compact
+			(index_dates-cache_dates).sort_by{|v|v.split(/[^0-9]+/).map(&:to_i)}
+		end
+	end
 private
 	def build_props(build)
 		props=Hash[%w(archive_date package_name got_revision).zip([])]
@@ -130,9 +142,12 @@ Dir.chdir(File.dirname(__FILE__))
 
 case ARGV[0]
 when 'update'
+	index=Net::HTTP.get(URI("https://static.rust-lang.org/dist/index.txt"))
 	['beta','stable','nightly'].each do |channel|
 		bcache=BuildCache.new(channel)
 		bcache.update(ARGV[1]=='--force')
+		missing=bcache.check_missing(index)
+		puts "Missing buildbot versions for #{channel}: #{missing*", "}" if missing.length>0
 		$stderr.puts "Latest nightly: #{bcache.latest}" if channel=='nightly'
 	end
 when 'lookup'
