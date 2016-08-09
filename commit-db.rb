@@ -75,7 +75,7 @@ class BuildCache
 	def lookup_by_commit(commit)
 		@builds.select{|k,v|
 			next if v['text']!=%w(build successful)
-			v['properties'].find{|p|p[0]=='got_revision'&&p[1]==commit}
+			v['properties'].find{|p|p[0]=='got_revision'&&p[1].start_with?(commit)}
 		}.map{|k,v|
 			props=build_props(v)
 			if @channel=="stable" then
