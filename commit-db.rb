@@ -14,6 +14,8 @@ require 'json'
 require 'net/https'
 require 'aws-sdk-s3'
 
+Dir.chdir(File.dirname(__FILE__))
+
 class BbotCache
 	def initialize(channel)
 		@channel=channel
@@ -289,8 +291,6 @@ if !%w(lookup list-valid update).include?ARGV[0] then
 	$stderr.puts "	commit-db lookup COMMIT"
 	exit(1)
 end
-
-Dir.chdir(File.dirname(__FILE__))
 
 case ARGV[0]
 when 'update'
