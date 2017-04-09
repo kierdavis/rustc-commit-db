@@ -225,6 +225,8 @@ class DistCache
 		end
 		$stderr.puts "Retrieved #{count} new releases"
 
+		initialize(@channel) if count>0
+
 		File.utime(Time.now,Time.now,cache_dir)
 	end
 
