@@ -130,6 +130,19 @@ private
 	end
 end
 
+def resolve_commit(short_commit)
+	if ENV.include?('GIT_DIR') then
+		c=IO.popen(["git","rev-parse",short_commit],&:read)
+		raise "git returned error: "+c if $?.exitstatus != 0
+		c.strip
+	else
+		uri=URI("https://api.github.com/repos/rust-lang/rust/commits/#{short_commit}")
+		resp=Net::HTTP.start(uri.hostname, uri.port, :use_ssl => uri.scheme == 'https') { |http| http.get(uri, :Accept => 'application/vnd.github.VERSION.sha') }
+		raise "GitHub returned error: "+resp.body if resp.code != 200
+		resp.body
+	end
+end
+
 class CommitCache
 	def initialize
 		@cache=IO.foreach(cache_file).map(&:strip).to_a
@@ -140,8 +153,7 @@ class CommitCache
 		i = @cache.bsearch_index { |lc| short_commit <= lc }
 		if i.nil? || !@cache[i].start_with?(short_commit) then
 			i||=@cache.count
-			uri=URI("https://api.github.com/repos/rust-lang/rust/commits/#{short_commit}")
-			lc=Net::HTTP.start(uri.hostname, uri.port, :use_ssl => uri.scheme == 'https') { |http| http.get(uri, :Accept => 'application/vnd.github.VERSION.sha') }.body
+			lc=resolve_commit(short_commit)
 			@cache.insert(i,lc)
 			@dirty=true
 			lc
