@@ -12,6 +12,7 @@
 
 require 'json'
 require 'net/https'
+require 'aws-sdk-s3'
 
 class BbotCache
 	def initialize(channel)
@@ -207,18 +208,35 @@ class DistCache
 	end
 
 	def rg_versions(glob,re)
-		IO.popen(["rg","-r","-F","-A1","-N","--no-heading","[pkg.rust]","--glob",glob]).each_line.map {|l| $~ if re=~l }.compact
+		IO.popen(["rg","-F","-A1","-N","--no-heading","[pkg.rust]","--glob",glob]).each_line.map {|l| $~ if re=~l }.compact
 	end
 
-	def update(force, index)
-		return unless force || (File.mtime(cache_dir) <= (Time.now-86400))
-
+	def update(force)
 		$stderr.puts "Checking for release updates on #{@channel}"
 
+		client = Aws::S3::Client.new(endpoint: 'https://static.rust-lang.org', region: 'none')
+		client.list_objects_v2(bucket: '', prefix: 'dist/')
+
+		tomls = []
 		if @channel=="stable" then
-			tomls=index.lines.map{|l|l=~Regexp.new("^/dist/(channel-rust-\\d+\\.\\d+\\.\\d+\\.toml),")&&$~[1]}.compact
+			start_after = 'dist/channel-rust'
+			break_re = '^dist/channel-rust'
+			toml_re = '^dist/(channel-rust-\\d+\\.\\d+\\.\\d+\\.toml)$'
 		else
-			tomls=index.lines.map{|l|l=~Regexp.new("^/dist/(\\d{4}-\\d{2}-\\d{2}/channel-rust-#{@channel}\\.toml),")&&$~[1]}.compact
+			latest =~ Regexp.new("^#{@channel}-(\\d{4}-\\d{2}-\\d{2})$")
+
+			if force then
+				start_after = 'dist/2000-01-01'
+			else
+				start_after = "dist/#{$~[1]}"
+			end
+			break_re = '^dist/\\d{4}-\\d{2}-\\d{2}/'
+			toml_re = "^dist/(\\d{4}-\\d{2}-\\d{2}/channel-rust-#{@channel}\\.toml)$"
+		end
+		for obj in client.list_objects_v2(bucket: '', prefix: 'dist/', start_after: start_after)
+					.each_page.lazy.flat_map { |page| page.data.contents }
+			break unless obj.key =~ Regexp.new(break_re)
+			tomls << $~[1] if obj.key =~ Regexp.new(toml_re)
 		end
 
 		count=0
@@ -276,10 +294,9 @@ Dir.chdir(File.dirname(__FILE__))
 
 case ARGV[0]
 when 'update'
-	index=Net::HTTP.get(URI("https://static.rust-lang.org/dist/index.txt"))
 	['beta','stable','nightly'].each do |channel|
 		dcache=DistCache.new(channel)
-		dcache.update(ARGV[1]=='--force',index)
+		dcache.update(ARGV[1]=='--force')
 		$stderr.puts "Latest dist nightly: #{dcache.latest}" if channel=='nightly'
 		#bcache=BbotCache.new(channel)
 		#bcache.update(ARGV[1]=='--force')
