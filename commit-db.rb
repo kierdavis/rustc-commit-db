@@ -87,7 +87,7 @@ class BbotCache
 			end
 		}.compact
 	end
-	
+
 	def latest
 		for k in @builds.keys.sort.reverse do
 			v=@builds[k]
@@ -139,7 +139,7 @@ def resolve_commit(short_commit)
 	else
 		uri=URI("https://api.github.com/repos/rust-lang/rust/commits/#{short_commit}")
 		resp=Net::HTTP.start(uri.hostname, uri.port, :use_ssl => uri.scheme == 'https') { |http| http.get(uri, :Accept => 'application/vnd.github.VERSION.sha') }
-		raise "GitHub returned error: "+resp.body if resp.code != 200
+		raise "GitHub returned error: "+resp.body if resp.code != '200'
 		resp.body
 	end
 end
